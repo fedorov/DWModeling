@@ -115,6 +115,7 @@ public:
         
   void SetX (const float* x, int sz) //Self signal X
   {
+    std::cout<<"x size: "<<sz<<std::endl;
     X.set_size (sz);
     for( int i = 0; i < sz; ++i )
       X[i] = x[i];
@@ -425,7 +426,7 @@ int main( int argc, char * argv[])
   // Trigger times
   std::vector<float> bValues;
   // list of b-values to be passed to the optimizer
-  float *bValuesPtr, *imageValuesPtr;
+  float *bValuesPtr, *imageValuesPtr, *bValuesPtrTotal, *imageValuesPtrTotal;
   // "true" for the b-value and measurement pair to be used in fitting
   bool *bValuesMask;
   int bValuesTotal, bValuesSelected;
@@ -470,11 +471,17 @@ int main( int argc, char * argv[])
       return -1;
     }
 
+    std::cout<<"total: "<<bValuesTotal<<"selected: "<<bValuesSelected<<std::endl;
+
     bValuesPtr = new float[bValuesSelected];
+    bValuesPtrTotal = new float[bValuesTotal];
     imageValuesPtr = new float[bValuesSelected];
+    imageValuesPtrTotal = new float[bValuesTotal];
     int j = 0;
+    int k  = 0;
     std::cout << "Will use the following b-values: ";
     for(int i=0;i<bValuesTotal;i++){
+      bValuesPtrTotal[k++] = bValues[i];
       if(bValuesMask[i]){
         std::cout << bValues[i] << " ";
         bValuesPtr[j++] = bValues[i];
@@ -562,7 +569,9 @@ int main( int argc, char * argv[])
       costFunction->SetX(bValuesPtr, bValuesSelected);
       const float* imageVector = const_cast<float*>(vectorVoxel.GetDataPointer());
       int j = 0;
+      int k = 0;
       for(int i=0;i<bValuesTotal;i++){
+        imageValuesPtrTotal[k++] = imageVector[i];
         if(bValuesMask[i]){
           imageValuesPtr[j++] = imageVector[i];
         }
@@ -594,11 +603,15 @@ int main( int argc, char * argv[])
      itk::LevenbergMarquardtOptimizer::ParametersType finalPosition;
 
      finalPosition = optimizer->GetCurrentPosition();
+
+     costFunction->SetX(bValuesPtrTotal,bValuesTotal);
+     costFunction->SetY(imageValuesPtrTotal,bValuesTotal);
+     std::cout << "The fitted values: ";
      for(int i=0;i<fittedVoxel.GetSize();i++){
        fittedVoxel[i] = costFunction->GetFittedValue(finalPosition, bValues[i]);
-       //std::cout << fittedVoxel[i] << " ";
+       std::cout << fittedVoxel[i] << " ";
      }
-     //std::cout << std::endl;
+     std::cout << std::endl;
      fittedIt.Set(fittedVoxel);
 
      perfFracIt.Set(finalPosition[1]);
